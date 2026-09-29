@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>早期方案探索（归档）· 知识图谱可视化开源方案对比</title>
+<style>
+  body { margin: 0; padding: 40px; font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif; background: #fafafa; color: #222; }
+  h1 { font-size: 22px; margin: 0 0 6px; }
+  p.sub { color: #777; margin: 0 0 28px; font-size: 14px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+  a.card { display: block; background: #fff; border: 1px solid #e6e6e6; border-radius: 12px; padding: 18px 20px;
+    text-decoration: none; color: inherit; transition: all .15s; }
+  a.card:hover { border-color: #8b5cf6; box-shadow: 0 6px 20px rgba(139,92,246,.12); transform: translateY(-2px); }
+  .no { color: #8b5cf6; font-weight: 700; margin-right: 6px; }
+  .name { font-size: 16px; font-weight: 600; }
+  .tech { font-size: 12px; color: #888; margin: 6px 0 10px; }
+  .desc { font-size: 13px; color: #555; line-height: 1.7; }
+  .back { display: inline-block; margin-bottom: 18px; color: #7c3aed; text-decoration: none; font-size: 14px; }
+  .note { background: #f3effe; border: 1px solid #e4d9fd; border-radius: 10px; padding: 12px 16px; font-size: 13px; color: #4c1d95; line-height: 1.8; margin: 0 0 24px; }
+  .note a { color: #6d28d9; }
+  .tags span { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 10px; background: #f3effe; color: #7c3aed; margin: 10px 6px 0 0; }
+</style>
+</head>
+<body>
+<a class="back" href="../../index.html">← 返回项目首页</a>
+<h1>早期方案探索（归档）· 知识图谱可视化开源方案对比</h1>
+<p class="sub">同一份虚构的“大模型知识库”数据 + 同一套 Obsidian 风格力度面板。每个页面右上角都能调节力度、切换数据规模（300 / 1000 / 3000 节点），左上角显示实时 FPS。</p>
+<div class="note">
+  这 9 个方案是项目早期的选型尝试，已归档，代码保持原样。<br>
+  对比结论：<b>d3-force + PixiJS（02）</b> 与 Obsidian 的技术路线完全一致。之后通过逆向 Obsidian 安装包确认了它的实现，
+  并据此做了高仿复刻 → <a href="../../replica/index.html">打开复刻版</a>。
+</div>
+<div class="grid" id="list"></div>
+<script>
+const ITEMS = [
+  ['01-force-graph', 'force-graph', 'Canvas 2D + d3-force', '封装最完整，开箱即用，效果最接近 Obsidian。', ['推荐', '上手最快']],
+  ['02-d3-pixi', 'd3-force + PixiJS', 'WebGL + d3-force', 'Obsidian / Logseq / Quartz 同款技术路线，大图最流畅，代码量最多。', ['推荐', 'Obsidian 同款']],
+  ['03-d3-svg', 'd3-force + SVG', 'SVG DOM + d3-force', '经典 d3 写法，CSS 定制最方便；上千节点后变卡。', ['经典']],
+  ['04-sigma', 'Sigma.js + graphology', 'WebGL + d3-force 驱动', '为大图而生的渲染器，标签自动避让。', ['大图']],
+  ['05-g6', 'AntV G6 v5', 'Canvas + 内置 d3-force', '国产，中文文档，插件和交互体系完整。', ['国产', '业务友好']],
+  ['06-vis-network', 'vis-network', 'Canvas + Barnes-Hut', '配置最简单的老牌库，手感偏弹簧。', ['简单']],
+  ['07-cytoscape-cola', 'Cytoscape.js + cola', 'Canvas + 约束布局', '图分析能力最强；cola 手感是“让位”而非“弹动”。', ['图分析']],
+  ['08-echarts', 'ECharts graph', 'Canvas + 内置力导', '已用 ECharts 的项目可直接上，丝滑度一般。', ['图表库']],
+  ['09-3d-force-graph', '3d-force-graph', 'Three.js + d3-force-3d', '3D 版 force-graph，可旋转、飞入，适合展示。', ['3D']],
+];
+document.getElementById('list').innerHTML = ITEMS.map(([dir, name, tech, desc, tags], i) => `
+  <a class="card" href="./${dir}/index.html">
+    <div><span class="no">${String(i + 1).padStart(2, '0')}</span><span class="name">${name}</span></div>
+    <div class="tech">${tech}</div>
+    <div class="desc">${desc}</div>
+    <div class="tags">${tags.map(t => `<span>${t}</span>`).join('')}</div>
+  </a>`).join('');
+</script>
+</body>
+</html>

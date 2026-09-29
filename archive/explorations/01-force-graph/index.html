@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>01 · force-graph</title>
+<link rel="stylesheet" href="../shared/panel.css">
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/force-graph@1.51.5/dist/force-graph.min.js"></script>
+<script src="../shared/data.js"></script>
+<script src="../shared/panel.js"></script>
+</head>
+<body>
+<div id="graph"></div>
+<script>
+const data = KG_clone();
+const neighbors = KG_DATA.neighbors;
+let hover = null;
+
+const Graph = ForceGraph()(document.getElementById('graph'))
+  .backgroundColor('#ffffff')
+  .graphData(data)
+  .nodeId('id')
+  .nodeRelSize(1)
+  .nodeVal(n => KG_radius(n) ** 2)            // nodeVal 是面积
+  .linkColor(l => {
+    if (!hover) return 'rgba(0,0,0,0.12)';
+    return (l.source.id === hover || l.target.id === hover) ? '#8b5cf6' : 'rgba(0,0,0,0.04)';
+  })
+  .linkWidth(l => hover && (l.source.id === hover || l.target.id === hover) ? 1.6 : 1)
+  .d3VelocityDecay(0.35)
+  .cooldownTime(Infinity)                      // 不自动冷却，拖拽时持续有弹性
+  .onNodeHover(n => { hover = n ? n.id : null; document.body.style.cursor = n ? 'grab' : ''; })
+  .onNodeDragEnd(n => { n.fx = undefined; n.fy = undefined; })   // 松手后回归物理（Obsidian 行为）
+  .nodeCanvasObject((n, ctx, scale) => {
+    const r = KG_radius(n);
+    const dim = hover && hover !== n.id && !neighbors.get(hover).has(n.id);
+    ctx.globalAlpha = dim ? 0.15 : 1;
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, r, 0, 2 * Math.PI);
+    ctx.fillStyle = n.id === hover ? '#8b5cf6' : KG_color(n);
+    ctx.fill();
+    // 标签：放大到一定程度才显示，悬停邻居始终显示
+    const showLabel = scale > 0.6 || n.degree > 8 || (hover && !dim);
+    if (showLabel) {
+      const fs = 12 / scale;
+      ctx.font = `${fs}px -apple-system, "Microsoft YaHei", sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillStyle = '#333';
+      ctx.fillText(n.label, n.x, n.y + r + 2 / scale);
+    }
+    ctx.globalAlpha = 1;
+  })
+  .nodePointerAreaPaint((n, color, ctx) => {
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.arc(n.x, n.y, KG_radius(n) + 2, 0, 2 * Math.PI); ctx.fill();
+  });
+
+function applyForces(p) {
+  const f = KG_toD3(p);
+  Graph.d3Force('center', null);
+  Graph.d3Force('x', d3.forceX(0).strength(f.centerStrength));
+  Graph.d3Force('y', d3.forceY(0).strength(f.centerStrength));
+  Graph.d3Force('charge').strength(f.charge);
+  Graph.d3Force('link').distance(f.linkDistance).strength(f.linkStrength);
+  Graph.d3ReheatSimulation();
+}
+
+const params = KG_panel({
+  title: '01 · force-graph',
+  tech: 'Canvas 2D + d3-force',
+  onChange: applyForces,
+  onReheat: () => Graph.d3ReheatSimulation(),
+  onFit: () => Graph.zoomToFit(500, 60),
+  note: 'vasturiano/force-graph：封装好的 d3-force + Canvas 方案，拖拽、缩放、悬停、惯性全部开箱即用。上手成本最低、效果最接近 Obsidian。',
+});
+applyForces(params);
+setTimeout(() => Graph.zoomToFit(600, 60), 1500);
+</script>
+</body>
+</html>

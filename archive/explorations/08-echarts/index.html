@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>08 · ECharts graph</title>
+<link rel="stylesheet" href="../shared/panel.css">
+<script src="https://cdn.jsdelivr.net/npm/echarts@6.1.0/dist/echarts.min.js"></script>
+<script src="../shared/data.js"></script>
+<script src="../shared/panel.js"></script>
+</head>
+<body>
+<div id="graph"></div>
+<script>
+const { nodes, links } = KG_clone();
+const chart = echarts.init(document.getElementById('graph'), null, { renderer: 'canvas' });
+addEventListener('resize', () => chart.resize());
+
+// ECharts 力导没有“吸引力强度”参数；其余三个近似映射
+function forceOf(p) {
+  return {
+    repulsion: p.repel * 20,
+    gravity: p.center * 0.2,
+    edgeLength: p.distance * 0.4,
+    friction: 0.15,
+    layoutAnimation: true,
+  };
+}
+
+function render(p) {
+  chart.setOption({
+    animationDurationUpdate: 0,
+    series: [{
+      type: 'graph',
+      layout: 'force',
+      force: forceOf(p),
+      roam: true,
+      draggable: true,
+      data: nodes.map(n => ({
+        id: n.id, name: n.label, symbolSize: KG_radius(n) * 2,
+        itemStyle: { color: KG_color(n) },
+      })),
+      links: links.map(l => ({ source: l.source, target: l.target })),
+      label: { show: true, position: 'bottom', fontSize: 12, color: '#333' },
+      labelLayout: { hideOverlap: true },
+      lineStyle: { color: '#000', opacity: 0.12, width: 1 },
+      emphasis: {
+        focus: 'adjacency',                      // 悬停高亮一度邻居
+        itemStyle: { color: '#8b5cf6' },
+        lineStyle: { color: '#8b5cf6', opacity: 1, width: 1.6 },
+        label: { show: true },
+      },
+      blur: { itemStyle: { opacity: 0.15 }, lineStyle: { opacity: 0.04 }, label: { opacity: 0.15 } },
+      scaleLimit: { min: 0.05, max: 6 },
+    }],
+  });
+}
+
+const params = KG_panel({
+  title: '08 · ECharts graph',
+  tech: 'Canvas（zrender）+ 内置力导布局',
+  onChange: (p) => chart.setOption({ series: [{ force: forceOf(p) }] }),
+  onReheat: () => { chart.clear(); render(params); },
+  onFit: () => chart.dispatchAction({ type: 'restore' }),
+  note: '如果项目里已经在用 ECharts，几十行配置就能出图。但力导参数少（无吸引力强度），拖拽时只有被拖节点移动、其余节点联动较弱，丝滑度明显不如 d3-force 系方案。',
+});
+render(params);
+</script>
+</body>
+</html>

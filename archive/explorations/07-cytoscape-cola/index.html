@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>07 · Cytoscape.js + cola</title>
+<link rel="stylesheet" href="../shared/panel.css">
+<script src="https://cdn.jsdelivr.net/npm/cytoscape@3.34.3/dist/cytoscape.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/webcola@3.4.0/WebCola/cola.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/cytoscape-cola@2.5.1/cytoscape-cola.js"></script>
+<script src="../shared/data.js"></script>
+<script src="../shared/panel.js"></script>
+</head>
+<body>
+<div id="graph"></div>
+<script>
+const { nodes, links } = KG_clone();
+
+const cy = cytoscape({
+  container: document.getElementById('graph'),
+  elements: [
+    ...nodes.map(n => ({ data: { id: n.id, label: n.label, r: KG_radius(n), color: KG_color(n) } })),
+    ...links.map(l => ({ data: { source: l.source, target: l.target } })),
+  ],
+  style: [
+    { selector: 'node', style: {
+      width: 'mapData(r, 0, 30, 0, 60)', height: 'mapData(r, 0, 30, 0, 60)',
+      'background-color': 'data(color)', label: 'data(label)',
+      'font-size': 12, color: '#333', 'text-valign': 'bottom', 'text-margin-y': 3,
+      'font-family': '-apple-system, Microsoft YaHei, sans-serif',
+      'min-zoomed-font-size': 8,                 // 缩小后隐藏标签
+      'overlay-opacity': 0,
+    } },
+    { selector: 'edge', style: { width: 1, 'line-color': '#000', 'line-opacity': 0.12, 'curve-style': 'haystack' } },
+    { selector: 'node.hover', style: { 'background-color': '#8b5cf6' } },
+    { selector: 'node.dim', style: { opacity: 0.15 } },
+    { selector: 'edge.on', style: { 'line-color': '#8b5cf6', 'line-opacity': 1, width: 1.6 } },
+    { selector: 'edge.dim', style: { 'line-opacity': 0.04 } },
+  ],
+});
+
+cy.on('mouseover', 'node', (e) => {
+  const n = e.target, hood = n.closedNeighborhood();
+  cy.elements().not(hood).addClass('dim');
+  n.addClass('hover');
+  n.connectedEdges().addClass('on');
+});
+cy.on('mouseout', 'node', () => cy.elements().removeClass('dim hover on'));
+
+// cola 是约束布局，没有“向心力 / 吸引力强度”的直接对应：
+// 排斥力 -> nodeSpacing，连线长度 -> edgeLength，吸引力 -> 连线长度的收缩系数
+let layout = null;
+function runLayout(p) {
+  if (layout) layout.stop();
+  layout = cy.layout({
+    name: 'cola',
+    infinite: true,              // 持续模拟，拖拽时其他节点实时响应
+    fit: false,
+    animate: true,
+    randomize: false,
+    avoidOverlap: true,
+    handleDisconnected: true,
+    nodeSpacing: () => p.repel * 1.5,
+    edgeLength: () => p.distance * 0.4 * (1.5 - p.link * 0.5),
+    centerGraph: p.center > 0,
+  });
+  layout.run();
+}
+
+const params = KG_panel({
+  title: '07 · Cytoscape.js + cola',
+  tech: 'Canvas + WebCola 约束布局（infinite 模式）',
+  onChange: runLayout,
+  onReheat: () => runLayout(params),
+  onFit: () => cy.animate({ fit: { padding: 60 }, duration: 500 }),
+  note: 'Cytoscape 是图分析能力最强的库（选择器、图算法、几十种布局插件）。cola 是约束布局而非纯力导，拖拽时其他节点会“让位”而不是“弹动”，手感与 Obsidian 不同；向心力/吸引力只能近似映射。',
+});
+runLayout(params);
+setTimeout(() => cy.animate({ fit: { padding: 60 }, duration: 500 }), 1500);
+</script>
+</body>
+</html>

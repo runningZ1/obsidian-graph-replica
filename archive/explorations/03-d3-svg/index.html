@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>03 · d3-force + SVG</title>
+<link rel="stylesheet" href="../shared/panel.css">
+<style>
+  svg { width: 100%; height: 100%; display: block; }
+  .link { stroke: #000; stroke-opacity: .12; }
+  .link.on { stroke: #8b5cf6; stroke-opacity: 1; stroke-width: 1.6px; }
+  .node circle { cursor: grab; }
+  .node text { fill: #333; pointer-events: none; text-anchor: middle; }
+  .dimmed { opacity: .15; }
+  svg.far .node text { display: none; }
+  svg.far .node.big text, svg.far .node.show text { display: block; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+<script src="../shared/data.js"></script>
+<script src="../shared/panel.js"></script>
+</head>
+<body>
+<div id="graph"></div>
+<script>
+const { nodes, links } = KG_clone();
+const neighbors = KG_DATA.neighbors;
+const W = innerWidth, H = innerHeight;
+
+const svg = d3.select('#graph').append('svg');
+const root = svg.append('g');
+const zoom = d3.zoom().scaleExtent([0.05, 6]).on('zoom', (e) => {
+  root.attr('transform', e.transform);
+  svg.classed('far', e.transform.k < 0.6);
+  root.selectAll('.node text').style('font-size', (12 / e.transform.k) + 'px');
+});
+svg.call(zoom).call(zoom.transform, d3.zoomIdentity.translate(W / 2, H / 2).scale(0.8));
+
+const linkSel = root.append('g').selectAll('line').data(links).join('line').attr('class', 'link');
+const nodeSel = root.append('g').selectAll('g').data(nodes).join('g')
+  .attr('class', d => 'node' + (d.degree > 8 ? ' big' : ''));
+nodeSel.append('circle').attr('r', KG_radius).attr('fill', KG_color);
+nodeSel.append('text').text(d => d.label).attr('dy', d => KG_radius(d) + 13);
+
+// 悬停高亮一度邻居
+nodeSel.on('mouseenter', (e, d) => {
+  const nb = neighbors.get(d.id);
+  nodeSel.classed('dimmed', n => n.id !== d.id && !nb.has(n.id))
+         .classed('show', n => n.id === d.id || nb.has(n.id));
+  linkSel.classed('on', l => l.source.id === d.id || l.target.id === d.id)
+         .classed('dimmed', l => !(l.source.id === d.id || l.target.id === d.id));
+  d3.select(e.currentTarget).select('circle').attr('fill', '#8b5cf6');
+}).on('mouseleave', (e, d) => {
+  nodeSel.classed('dimmed', false).classed('show', false);
+  linkSel.classed('on', false).classed('dimmed', false);
+  d3.select(e.currentTarget).select('circle').attr('fill', KG_color(d));
+});
+
+const sim = d3.forceSimulation(nodes)
+  .velocityDecay(0.35)
+  .force('link', d3.forceLink(links).id(d => d.id))
+  .force('charge', d3.forceManyBody())
+  .force('x', d3.forceX(0)).force('y', d3.forceY(0))
+  .force('collide', d3.forceCollide(d => KG_radius(d) + 2))
+  .on('tick', () => {
+    linkSel.attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+           .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+    nodeSel.attr('transform', d => `translate(${d.x},${d.y})`);
+  });
+
+nodeSel.call(d3.drag()
+  .on('start', (e, d) => { if (!e.active) sim.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
+  .on('drag',  (e, d) => { d.fx = e.x; d.fy = e.y; })
+  .on('end',   (e, d) => { if (!e.active) sim.alphaTarget(0); d.fx = null; d.fy = null; }));
+
+function applyForces(p) {
+  const f = KG_toD3(p);
+  sim.force('x').strength(f.centerStrength);
+  sim.force('y').strength(f.centerStrength);
+  sim.force('charge').strength(f.charge);
+  sim.force('link').distance(f.linkDistance).strength(f.linkStrength);
+  sim.alpha(0.5).restart();
+}
+function fit() {
+  const b = root.node().getBBox();
+  const s = Math.min(W / (b.width + 120), H / (b.height + 120), 3);
+  svg.transition().duration(500).call(zoom.transform,
+    d3.zoomIdentity.translate(W / 2 - (b.x + b.width / 2) * s, H / 2 - (b.y + b.height / 2) * s).scale(s));
+}
+
+const params = KG_panel({
+  title: '03 · d3-force + SVG',
+  tech: 'SVG DOM + d3-force（经典写法）',
+  onChange: applyForces,
+  onReheat: () => sim.alpha(0.8).restart(),
+  onFit: fit,
+  note: '最经典的 d3 教科书写法，每个节点是一个 DOM 元素，CSS 定制方便。几百个节点以内很顺滑；上千节点后 DOM 更新成为瓶颈，可切换“数据规模”对比 01/02 的差异。',
+});
+applyForces(params);
+setTimeout(fit, 1500);
+</script>
+</body>
+</html>

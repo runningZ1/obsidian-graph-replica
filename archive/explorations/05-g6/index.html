@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>05 · AntV G6 v5</title>
+<link rel="stylesheet" href="../shared/panel.css">
+<script src="https://cdn.jsdelivr.net/npm/@antv/g6@5.1.1/dist/g6.min.js"></script>
+<script src="../shared/data.js"></script>
+<script src="../shared/panel.js"></script>
+</head>
+<body>
+<div id="graph"></div>
+<script>
+const { nodes, links } = KG_clone();
+
+function layoutOf(p) {
+  const f = KG_toD3(p);
+  return {
+    type: 'd3-force',
+    link: { distance: f.linkDistance, strength: f.linkStrength },
+    manyBody: { strength: f.charge },
+    x: { strength: f.centerStrength },
+    y: { strength: f.centerStrength },
+    collide: { radius: 12 },
+    velocityDecay: 0.35,
+  };
+}
+
+const params = KG_panel({
+  title: '05 · AntV G6 v5',
+  tech: 'Canvas（@antv/g）+ 内置 d3-force 布局',
+  onChange: async (p) => { graph.setLayout(layoutOf(p)); await graph.layout(); },
+  onReheat: async () => { await graph.layout(); },
+  onFit: () => graph.fitView({ when: 'always' }, { duration: 500 }),
+  note: '蚂蚁 AntV 出品，中文文档完善。内置 d3-force 布局 + drag-element-force 行为，拖拽时整张图会联动。节点/边的样式、状态、插件（小地图、右键菜单、tooltip）体系最完整，适合做业务产品。',
+});
+
+const graph = new G6.Graph({
+  container: 'graph',
+  background: '#ffffff',
+  data: {
+    nodes: nodes.map(n => ({ id: n.id, data: n })),
+    edges: links.map((l, i) => ({ id: 'e' + i, source: l.source, target: l.target })),
+  },
+  node: {
+    style: {
+      size: d => KG_radius(d.data) * 2,
+      fill: d => KG_color(d.data),
+      lineWidth: 0,
+      labelText: d => d.data.label,
+      labelFontSize: 12,
+      labelFill: '#333',
+      labelPlacement: 'bottom',
+    },
+    state: {
+      active: { fill: '#8b5cf6', halo: false },
+      inactive: { opacity: 0.15 },
+    },
+  },
+  edge: {
+    style: { stroke: '#000000', strokeOpacity: 0.12, lineWidth: 1 },
+    state: {
+      active: { stroke: '#8b5cf6', strokeOpacity: 1, lineWidth: 1.6, halo: false },
+      inactive: { strokeOpacity: 0.04 },
+    },
+  },
+  layout: layoutOf(params),
+  behaviors: [
+    'drag-canvas',
+    'zoom-canvas',
+    { type: 'drag-element-force', fixed: false },     // 拖拽时联动物理模拟，松手回归
+    { type: 'hover-activate', degree: 1, state: 'active', inactiveState: 'inactive' },
+  ],
+  autoFit: 'view',
+});
+graph.render().then(() => console.info('[G6] render 完成'));
+</script>
+</body>
+</html>

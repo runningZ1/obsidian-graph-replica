@@ -1,0 +1,24 @@
+{
+  "name": "obsidian-graph-reverse-replica",
+  "private": true,
+  "description": "Obsidian 关系图谱逆向解包分析与高仿复刻",
+  "scripts": {
+    "serve": "python -m http.server 5173",
+    "test:physics": "node tests/sim-worker-physics.mjs",
+    "test:e2e": "node tests/replica-features.cjs",
+    "test:file": "node tests/file-protocol-all.cjs",
+    "obsidian:extract": "node tools/obsidian-source/extract.cjs",
+    "obsidian:annotate": "node tools/obsidian-source/pipeline.cjs",
+    "obsidian:all": "npm run obsidian:extract && npm run obsidian:annotate",
+    "test:audit": "node tests/replica-audit-fixes.cjs"
+  },
+  "devDependencies": {
+    "@babel/generator": "7.29.8",
+    "@babel/parser": "7.29.9",
+    "@babel/traverse": "7.29.8",
+    "@electron/asar": "4.3.1",
+    "prettier": "3.9.9",
+    "puppeteer-core": "24.43.1",
+    "wabt": "1.0.39"
+  }
+}

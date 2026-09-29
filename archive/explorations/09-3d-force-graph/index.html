@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>09 · 3d-force-graph</title>
+<link rel="stylesheet" href="../shared/panel.css">
+<style>.scene-tooltip { color: #fff !important; background: rgba(40,40,40,.85); padding: 3px 8px; border-radius: 4px; font-size: 12px; }</style>
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/3d-force-graph@1.80.0/dist/3d-force-graph.min.js"></script>
+<script src="../shared/data.js"></script>
+<script src="../shared/panel.js"></script>
+</head>
+<body>
+<div id="graph"></div>
+<script>
+const data = KG_clone();
+const neighbors = KG_DATA.neighbors;
+let hover = null;
+const isOn = l => hover && (l.source.id === hover || l.target.id === hover);
+
+// d3 没有 forceZ，这里补一个 z 轴向心力
+function forceZ() {
+  let ns = [], strength = 0.05;
+  const f = (alpha) => { for (const n of ns) n.vz -= (n.z || 0) * strength * alpha; };
+  f.initialize = (x) => { ns = x; };
+  f.strength = (s) => { strength = s; return f; };
+  return f;
+}
+
+const Graph = ForceGraph3D()(document.getElementById('graph'))
+  .backgroundColor('#ffffff')
+  .graphData(data)
+  .nodeLabel('label')
+  .nodeVal(n => KG_radius(n) ** 2 / 4)
+  .nodeRelSize(2)
+  .nodeOpacity(0.95)
+  .nodeColor(n => {
+    if (!hover) return KG_color(n);
+    if (n.id === hover) return '#8b5cf6';
+    return neighbors.get(hover).has(n.id) ? KG_color(n) : '#e8e8e8';
+  })
+  .linkColor(l => isOn(l) ? '#8b5cf6' : '#cccccc')
+  .linkWidth(l => isOn(l) ? 1.2 : 0)
+  .linkOpacity(0.5)
+  .d3VelocityDecay(0.35)
+  .onNodeHover(n => {
+    hover = n ? n.id : null;
+    document.body.style.cursor = n ? 'grab' : '';
+    Graph.nodeColor(Graph.nodeColor()).linkColor(Graph.linkColor()).linkWidth(Graph.linkWidth());   // 触发重绘
+  })
+  .onNodeDragEnd(n => { n.fx = n.fy = n.fz = undefined; })
+  .onNodeClick(n => {
+    // 点击节点：相机飞过去
+    const d = 120, r = 1 + d / Math.hypot(n.x, n.y, n.z);
+    Graph.cameraPosition({ x: n.x * r, y: n.y * r, z: n.z * r }, n, 1000);
+  });
+
+function applyForces(p, reheat = true) {
+  const f = KG_toD3(p);
+  Graph.d3Force('center', null);
+  Graph.d3Force('x', d3.forceX(0).strength(f.centerStrength));
+  Graph.d3Force('y', d3.forceY(0).strength(f.centerStrength));
+  Graph.d3Force('z', forceZ().strength(f.centerStrength));
+  Graph.d3Force('charge').strength(f.charge);
+  Graph.d3Force('link').distance(f.linkDistance).strength(f.linkStrength);
+  if (reheat) Graph.d3ReheatSimulation();   // 初始化时引擎尚未创建，不能 reheat
+}
+
+const params = KG_panel({
+  title: '09 · 3d-force-graph',
+  tech: 'Three.js(WebGL) + d3-force-3d',
+  onChange: applyForces,
+  onReheat: () => Graph.d3ReheatSimulation(),
+  onFit: () => Graph.zoomToFit(600, 40),
+  note: '与 01 同作者的 3D 版本（Obsidian 的 3D Graph 插件即基于它）。左键旋转、右键平移、滚轮缩放、点击节点飞入。展示效果炫，但 3D 下阅读标签和精确定位不如 2D，适合做“展示墙”。标签以悬停提示显示。',
+});
+applyForces(params, false);
+setTimeout(() => Graph.zoomToFit(800, 40), 2000);
+</script>
+</body>
+</html>

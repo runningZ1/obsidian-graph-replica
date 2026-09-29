@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>02 · d3-force + PixiJS（Obsidian 同款路线）</title>
+<link rel="stylesheet" href="../shared/panel.css">
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pixi.js@8.21.0/dist/pixi.min.js"></script>
+<script src="../shared/data.js"></script>
+<script src="../shared/panel.js"></script>
+</head>
+<body>
+<div id="graph"></div>
+<script>
+(async () => {
+  const { nodes, links } = KG_clone();
+  const neighbors = KG_DATA.neighbors;
+
+  const app = new PIXI.Application();
+  await app.init({ resizeTo: window, background: '#ffffff', antialias: true,
+                   resolution: window.devicePixelRatio || 1, autoDensity: true });
+  document.getElementById('graph').appendChild(app.canvas);
+
+  const world = new PIXI.Container();
+  world.position.set(app.screen.width / 2, app.screen.height / 2);
+  world.scale.set(0.8);
+  app.stage.addChild(world);
+
+  const lineG = new PIXI.Graphics();     // 普通连线
+  const hlLineG = new PIXI.Graphics();   // 高亮连线
+  const nodeLayer = new PIXI.Container();
+  const labelLayer = new PIXI.Container();
+  world.addChild(lineG, hlLineG, nodeLayer, labelLayer);
+
+  let hover = null, dragging = null, panning = null;
+
+  // ---- 节点 & 标签 ----
+  for (const n of nodes) {
+    const r = KG_radius(n);
+    const g = new PIXI.Graphics().circle(0, 0, r).fill(0xffffff);
+    g.tint = KG_color(n);
+    g.eventMode = 'static';
+    g.cursor = 'grab';
+    g.hitArea = new PIXI.Circle(0, 0, r + 3);
+    g.on('pointerover', () => { if (!dragging) hover = n.id; });
+    g.on('pointerout', () => { if (!dragging) hover = null; });
+    g.on('pointerdown', (e) => {
+      e.stopPropagation();
+      dragging = n; hover = n.id;
+      const p = world.toLocal(e.global);
+      n.fx = p.x; n.fy = p.y;
+      sim.alphaTarget(0.3).restart();          // 拖拽时“加热”，带动邻居弹动
+    });
+    const t = new PIXI.Text({ text: n.label, resolution: 2,
+      style: { fontSize: 12, fill: '#333333', fontFamily: '-apple-system, "Microsoft YaHei", sans-serif' } });
+    t.anchor.set(0.5, 0);
+    n._g = g; n._t = t; n._r = r;
+    nodeLayer.addChild(g); labelLayer.addChild(t);
+  }
+
+  // ---- 交互：拖拽节点 / 平移 / 缩放 ----
+  app.stage.eventMode = 'static';
+  app.stage.hitArea = app.screen;
+  app.stage.on('pointerdown', (e) => { panning = { x: e.global.x, y: e.global.y, wx: world.x, wy: world.y }; });
+  app.stage.on('globalpointermove', (e) => {
+    if (dragging) {
+      const p = world.toLocal(e.global);
+      dragging.fx = p.x; dragging.fy = p.y;
+    } else if (panning) {
+      world.position.set(panning.wx + e.global.x - panning.x, panning.wy + e.global.y - panning.y);
+    }
+  });
+  const release = () => {
+    if (dragging) {
+      dragging.fx = null; dragging.fy = null;
+      sim.alphaTarget(0);
+      dragging = null; hover = null;
+    }
+    panning = null;
+  };
+  app.stage.on('pointerup', release);
+  app.stage.on('pointerupoutside', release);
+  app.canvas.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const k = Math.exp(-e.deltaY * 0.0015);
+    const s = Math.min(6, Math.max(0.05, world.scale.x * k));
+    const before = world.toLocal({ x: e.offsetX, y: e.offsetY });
+    world.scale.set(s);
+    const after = world.toGlobal(before);
+    world.x += e.offsetX - after.x; world.y += e.offsetY - after.y;
+  }, { passive: false });
+
+  // ---- 物理模拟 ----
+  const sim = d3.forceSimulation(nodes)
+    .velocityDecay(0.35)
+    .force('link', d3.forceLink(links).id(d => d.id))
+    .force('charge', d3.forceManyBody())
+    .force('x', d3.forceX(0))
+    .force('y', d3.forceY(0))
+    .force('collide', d3.forceCollide(d => d._r + 2));
+
+  function applyForces(p) {
+    const f = KG_toD3(p);
+    sim.force('x').strength(f.centerStrength);
+    sim.force('y').strength(f.centerStrength);
+    sim.force('charge').strength(f.charge);
+    sim.force('link').distance(f.linkDistance).strength(f.linkStrength);
+    sim.alpha(0.5).restart();
+  }
+
+  // ---- 每帧渲染（Pixi ticker 驱动，缩放/悬停时也会刷新）----
+  app.ticker.add(() => {
+    const s = world.scale.x;
+    const hn = hover ? neighbors.get(hover) : null;
+    lineG.clear(); hlLineG.clear();
+    for (const l of links) {
+      const on = hover && (l.source.id === hover || l.target.id === hover);
+      (on ? hlLineG : lineG).moveTo(l.source.x, l.source.y).lineTo(l.target.x, l.target.y);
+    }
+    lineG.stroke({ width: 1 / s, color: 0x000000, alpha: hover ? 0.04 : 0.12 });
+    hlLineG.stroke({ width: 1.6 / s, color: 0x8b5cf6, alpha: 1 });
+
+    for (const n of nodes) {
+      const dim = hover && hover !== n.id && !hn.has(n.id);
+      n._g.position.set(n.x, n.y);
+      n._g.alpha = dim ? 0.15 : 1;
+      n._g.tint = n.id === hover ? 0x8b5cf6 : KG_color(n);
+      const show = s > 0.6 || n.degree > 8 || (hover && !dim);
+      n._t.visible = show;
+      if (show) {
+        n._t.position.set(n.x, n.y + n._r + 2 / s);
+        n._t.scale.set(1 / s);                 // 标签保持屏幕尺寸
+        n._t.alpha = dim ? 0.15 : 1;
+      }
+    }
+  });
+
+  function fit() {
+    const xs = nodes.map(n => n.x), ys = nodes.map(n => n.y);
+    const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+    const s = Math.min(app.screen.width / (x1 - x0 + 120), app.screen.height / (y1 - y0 + 120), 3);
+    world.scale.set(s);
+    world.position.set(app.screen.width / 2 - (x0 + x1) / 2 * s, app.screen.height / 2 - (y0 + y1) / 2 * s);
+  }
+
+  const params = KG_panel({
+    title: '02 · d3-force + PixiJS',
+    tech: 'WebGL 渲染 + d3-force（Obsidian 同款技术路线）',
+    onChange: applyForces,
+    onReheat: () => sim.alpha(0.8).restart(),
+    onFit: fit,
+    note: '手写集成：d3-force 负责物理，PixiJS(WebGL) 负责渲染。Obsidian / Logseq / Quartz 都是这条路线。代码量最多，但可控性最强，节点上万也能流畅。',
+  });
+  applyForces(params);
+  setTimeout(fit, 1500);
+})();
+</script>
+</body>
+</html>

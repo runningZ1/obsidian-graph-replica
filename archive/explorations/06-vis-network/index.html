@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>06 · vis-network</title>
+<link rel="stylesheet" href="../shared/panel.css">
+<script src="https://cdn.jsdelivr.net/npm/vis-network@10.1.2/standalone/umd/vis-network.min.js"></script>
+<script src="../shared/data.js"></script>
+<script src="../shared/panel.js"></script>
+</head>
+<body>
+<div id="graph"></div>
+<script>
+const { nodes, links } = KG_clone();
+const neighbors = KG_DATA.neighbors;
+const EDGE = 'rgba(0,0,0,0.12)';
+
+const nodeDS = new vis.DataSet(nodes.map(n => ({
+  id: n.id, label: n.label, size: KG_radius(n),
+  color: { background: KG_color(n), border: KG_color(n) },
+})));
+const edgeDS = new vis.DataSet(links.map((l, i) => ({ id: i, from: l.source, to: l.target })));
+
+// Obsidian 参数 -> vis Barnes-Hut 物理参数
+function physicsOf(p) {
+  return {
+    enabled: true,
+    solver: 'barnesHut',
+    barnesHut: {
+      gravitationalConstant: -p.repel * 300,
+      centralGravity: p.center * 0.6,
+      springConstant: p.link * 0.08,
+      springLength: p.distance * 0.5,
+      damping: 0.25,
+      avoidOverlap: 0.1,
+    },
+    maxVelocity: 60,
+    minVelocity: 0.3,
+    stabilization: { iterations: 150, updateInterval: 50 },
+  };
+}
+
+const params = KG_panel({
+  title: '06 · vis-network',
+  tech: 'Canvas + 内置 Barnes-Hut 物理引擎',
+  onChange: (p) => { network.setOptions({ physics: physicsOf(p) }); network.startSimulation(); },
+  onReheat: () => network.startSimulation(),
+  onFit: () => network.fit({ animation: { duration: 500 } }),
+  note: '老牌库，配置式 API 最简单，物理引擎自带（非 d3），拖拽手感偏“弹簧”。适合快速做原型；外观定制和大图性能不如前几个。',
+});
+
+const network = new vis.Network(document.getElementById('graph'), { nodes: nodeDS, edges: edgeDS }, {
+  nodes: {
+    shape: 'dot', borderWidth: 0,
+    font: { size: 12, color: '#333', face: '-apple-system, Microsoft YaHei, sans-serif' },
+    scaling: { label: { enabled: true, drawThreshold: 7 } },   // 缩小时隐藏标签
+  },
+  edges: { color: { color: EDGE, highlight: '#8b5cf6', hover: '#8b5cf6' }, width: 1, smooth: false,
+           selectionWidth: 0.6, hoverWidth: 0.6 },
+  interaction: { hover: true, tooltipDelay: 300, hideEdgesOnDrag: false },
+  physics: physicsOf(params),
+});
+
+// 悬停高亮一度邻居（批量更新 DataSet）
+function highlight(id) {
+  const nb = id ? neighbors.get(id) : null;
+  nodeDS.update(nodes.map(n => {
+    const dim = id && n.id !== id && !nb.has(n.id);
+    const c = n.id === id ? '#8b5cf6' : KG_color(n);
+    return { id: n.id, opacity: dim ? 0.15 : 1, color: { background: c, border: c } };
+  }));
+  edgeDS.update(links.map((l, i) => {
+    const on = id && (l.source === id || l.target === id);
+    return { id: i, color: { color: on ? '#8b5cf6' : (id ? 'rgba(0,0,0,0.04)' : EDGE) }, width: on ? 1.6 : 1 };
+  }));
+}
+network.on('hoverNode', e => highlight(e.node));
+network.on('blurNode', () => highlight(null));
+network.once('stabilizationIterationsDone', () => network.fit());
+</script>
+</body>
+</html>

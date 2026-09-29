@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Obsidian 关系图谱 · 逆向解包与复刻</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 48px 40px 64px; font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif; background: #fafafa; color: #222; }
+  .wrap { max-width: 1080px; margin: 0 auto; }
+  h1 { font-size: 26px; margin: 0 0 8px; }
+  .sub { color: #666; margin: 0 0 32px; font-size: 14px; line-height: 1.8; }
+  h2 { font-size: 15px; color: #888; font-weight: 500; margin: 36px 0 14px; letter-spacing: .5px; }
+  .card { display: block; background: #fff; border: 1px solid #e6e6e6; border-radius: 12px; padding: 20px 22px;
+    text-decoration: none; color: inherit; transition: all .15s; }
+  .card code { font-size: 12px; background: #f3effe; color: #6d28d9; padding: 1px 5px; border-radius: 4px; }
+  a.card:hover { border-color: #8b5cf6; box-shadow: 0 6px 20px rgba(139,92,246,.12); transform: translateY(-2px); }
+  .hero { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; }
+  .hero .main { background: linear-gradient(135deg, #7c3aed, #a78bfa); color: #fff; border: none; padding: 28px; }
+  .hero .main .name { font-size: 20px; }
+  .hero .main .desc { color: rgba(255,255,255,.9); }
+  .hero .main .tags span { background: rgba(255,255,255,.2); color: #fff; }
+  .col { display: grid; gap: 16px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+  .name { font-size: 16px; font-weight: 600; }
+  .path { font-size: 12px; color: #999; margin: 4px 0 10px; font-family: ui-monospace, Consolas, monospace; }
+  .hero .main .path { color: rgba(255,255,255,.75); }
+  .desc { font-size: 13px; color: #555; line-height: 1.75; }
+  .tags span { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 10px; background: #f3effe; color: #7c3aed; margin: 10px 6px 0 0; }
+  .flow { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+  .step { background: #fff; border: 1px solid #e6e6e6; border-radius: 10px; padding: 14px; font-size: 13px; line-height: 1.7; color: #555; }
+  .step b { display: block; color: #222; font-size: 14px; margin-bottom: 4px; }
+  .step i { font-style: normal; color: #8b5cf6; font-weight: 700; margin-right: 4px; }
+  .hint { font-size: 12px; color: #999; margin-top: 10px; }
+  @media (max-width: 860px) { .hero, .flow { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Obsidian 关系图谱 · 逆向解包与复刻</h1>
+  <p class="sub">
+    解包本机 Obsidian 1.13.7 安装包，分析关系图谱（Graph View）的数据层、PixiJS 渲染层、交互层与 Web Worker + WebAssembly 物理层，
+    并按源码中的公式与参数独立实现一个高仿复刻版，还原 Obsidian 拖拽、缩放、悬停时丝滑的动态效果。
+  </p>
+
+  <div class="hero">
+    <a class="card main" href="./replica/index.html">
+      <div class="name">▶ 打开复刻版</div>
+      <div class="path">replica/</div>
+      <div class="desc">PixiJS 7 渲染 + Web Worker 中的 d3-force，按源码还原节点、标签、连线、悬停、缩放惯性、滑块换算；
+        包含筛选、颜色组、外观、力度四个面板，以及播放动画、键盘操作、明暗主题。</div>
+      <div class="tags"><span>主体</span><span>可直接 file:// 打开</span><span>支持 3500+ 节点</span></div>
+    </a>
+    <div class="col">
+      <a class="card" href="./docs/Obsidian关系图谱技术底层分析.md">
+        <div class="name">技术底层分析</div>
+        <div class="path">docs/Obsidian关系图谱技术底层分析.md</div>
+        <div class="desc">架构、数据流、渲染公式、Worker 消息协议、WebAssembly 内核、滑块换算、性能设计，以及复刻版逐项对照。</div>
+      </a>
+      <a class="card" href="./docs/obsidian-source/README.md">
+        <div class="name">源码解读（注释版源码 · 本地生成）</div>
+        <div class="path">npm run obsidian:all → docs/obsidian-source/</div>
+        <div class="desc">重命名后的可读源码 + 中文注释，已通过结构等价校验。含闭源代码，不在仓库中，需从本机 Obsidian 生成，仅供个人学习。</div>
+      </a>
+    </div>
+  </div>
+
+  <h2>项目脉络</h2>
+  <div class="flow">
+    <div class="step"><b><i>1</i>方案探索</b>9 个开源库分别实现，对比手感与性能，锁定 d3-force + PixiJS 路线</div>
+    <div class="step"><b><i>2</i>逆向解包</b>解包 asar，定位 Graph Worker、PixiJS 7.2.4、内嵌 WebAssembly</div>
+    <div class="step"><b><i>3</i>源码注释</b>Babel 作用域安全重命名 + 注释，结构等价校验保证逻辑不变</div>
+    <div class="step"><b><i>4</i>高仿复刻</b>按源码公式与常量独立实现渲染器、物理 Worker 和控制面板</div>
+    <div class="step"><b><i>5</i>审计修正</b>对照源码逐项审计复刻版并修正差异，自动化测试回归</div>
+  </div>
+
+  <h2>更多</h2>
+  <div class="grid">
+    <a class="card" href="./archive/explorations/index.html">
+      <div class="name">早期方案探索（归档）</div>
+      <div class="path">archive/explorations/</div>
+      <div class="desc">force-graph、d3+PixiJS、d3+SVG、Sigma、G6、vis-network、Cytoscape、ECharts、3d-force-graph 共 9 个方案的对比实现。</div>
+      <div class="tags"><span>01~09</span><span>已归档</span></div>
+    </a>
+    <div class="card">
+      <div class="name">逆向工具链与测试</div>
+      <div class="path">tools/obsidian-source/ · tests/</div>
+      <div class="desc"><code>npm run obsidian:all</code> 一键从安装包生成注释版源码与文档；
+        <code>npm run test:audit</code> 等命令验证复刻版。详见 README。</div>
+    </div>
+  </div>
+  <p class="hint">Markdown 文档在浏览器中会显示为纯文本，建议用编辑器或 Obsidian 打开阅读。</p>
+</div>
+</body>
+</html>

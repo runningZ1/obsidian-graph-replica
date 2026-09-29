@@ -1,0 +1,166 @@
+/* ---------- 主题变量（取自 Obsidian 默认主题）---------- */
+body {
+  --accent-h: 258; --accent-s: 88%; --accent-l: 66%;
+  --color-accent: hsl(var(--accent-h), var(--accent-s), var(--accent-l));
+  --color-accent-1: hsl(calc(var(--accent-h) - 1), calc(var(--accent-s) * 1.01), calc(var(--accent-l) * 1.075));
+  --background-primary: #ffffff;
+  --background-secondary: #f6f6f6;
+  --background-modifier-border: #e0e0e0;
+  --background-modifier-hover: rgba(0, 0, 0, 0.067);
+  --text-normal: #222222;
+  --text-muted: #5c5c5c;
+  --text-faint: #ababab;
+  --color-base-35: #dadada;
+  --color-yellow: #e0ac00;
+  --color-green: #08b94e;
+  --interactive-accent: var(--color-accent-1);
+  --shadow: 0 1px 3px rgba(0,0,0,.05), 0 6px 20px rgba(0,0,0,.08);
+  --toggle-off: #d0d0d0;
+  /* 关系图谱 */
+  --graph-line: var(--color-base-35);
+  --graph-node: var(--text-muted);
+  --graph-node-unresolved: var(--text-faint);
+  --graph-node-focused: var(--color-accent);
+  --graph-node-tag: var(--color-green);
+  --graph-node-attachment: var(--color-yellow);
+  --graph-text: var(--text-normal);
+}
+body.theme-dark {
+  --color-accent-1: hsl(calc(var(--accent-h) - 3), calc(var(--accent-s) * 1.02), calc(var(--accent-l) * 1.15));
+  --background-primary: #1e1e1e;
+  --background-secondary: #262626;
+  --background-modifier-border: #363636;
+  --background-modifier-hover: rgba(255, 255, 255, 0.075);
+  --text-normal: #dadada;
+  --text-muted: #b3b3b3;
+  --text-faint: #666666;
+  --color-base-35: #3f3f3f;
+  --color-yellow: #e0de71;
+  --color-green: #44cf6e;
+  --interactive-accent: var(--color-accent);
+  --shadow: 0 2px 16px rgba(0,0,0,.5);
+  --toggle-off: #4a4a4a;
+}
+
+/* 渲染器通过这些类读取颜色（与 Obsidian 同名） */
+.graph-view.color-fill { color: var(--graph-node); }
+.graph-view.color-fill-focused { color: var(--graph-node-focused); }
+.graph-view.color-fill-tag { color: var(--graph-node-tag); }
+.graph-view.color-fill-attachment { color: var(--graph-node-attachment); }
+.graph-view.color-fill-unresolved { color: var(--graph-node-unresolved); opacity: .5; }
+.graph-view.color-arrow { color: var(--text-normal); opacity: .5; }
+.graph-view.color-circle { color: var(--graph-node-focused); }
+.graph-view.color-line { color: var(--graph-line); }
+.graph-view.color-text { color: var(--graph-text); }
+.graph-view.color-fill-highlight { color: var(--interactive-accent); }
+.graph-view.color-line-highlight { color: var(--interactive-accent); }
+
+/* ---------- 布局 ---------- */
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; }
+body {
+  background: var(--background-primary); color: var(--text-normal);
+  font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif; font-size: 14px;
+}
+body.is-grabbing, body.is-grabbing * { cursor: grabbing !important; }
+
+.view-header {
+  height: 44px; display: flex; align-items: center; padding: 0 12px; gap: 6px;
+  border-bottom: 1px solid var(--background-modifier-border); background: var(--background-primary); position: relative; z-index: 3;
+}
+.view-header .title { position: absolute; left: 50%; transform: translateX(-50%); font-weight: 500; font-size: 14px; }
+.view-header .spacer { flex: 1; }
+.icon-btn {
+  width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; border-radius: 5px;
+  border: none; background: transparent; color: var(--text-muted); cursor: pointer; padding: 0;
+}
+.icon-btn:hover { background: var(--background-modifier-hover); color: var(--text-normal); }
+.icon-btn svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.icon-btn.is-active { color: var(--interactive-accent); }
+.view-header a.back { color: var(--text-muted); text-decoration: none; font-size: 13px; padding: 4px 8px; border-radius: 5px; }
+.view-header a.back:hover { background: var(--background-modifier-hover); }
+.view-header select {
+  background: var(--background-primary); color: var(--text-muted); border: 1px solid var(--background-modifier-border);
+  border-radius: 5px; padding: 3px 6px; font-size: 12px;
+}
+.fps { font-size: 12px; color: var(--text-faint); font-variant-numeric: tabular-nums; min-width: 88px; }
+
+#graph { position: absolute; top: 44px; left: 0; right: 0; bottom: 0; overflow: hidden; }
+#graph canvas { position: absolute; inset: 0; }
+
+/* ---------- 控制面板 ---------- */
+.graph-controls {
+  position: absolute; top: 12px; right: 12px; width: 260px; max-height: calc(100% - 24px); overflow-y: auto; z-index: 2;
+  background: var(--background-primary); border: 1px solid var(--background-modifier-border); border-radius: 8px;
+  box-shadow: var(--shadow); padding: 4px 0; user-select: none; font-size: 13px;
+}
+.graph-controls.is-close { display: none; }
+.graph-controls-gear { position: absolute; top: 12px; right: 12px; z-index: 2; display: none; }
+.graph-controls.is-close + .graph-controls-gear { display: inline-flex; }
+.gc-section { border-bottom: 1px solid var(--background-modifier-border); }
+.gc-section:last-child { border-bottom: none; }
+.gc-head { display: flex; align-items: center; padding: 8px 10px; cursor: pointer; border-radius: 4px; margin: 0 4px; }
+.gc-head:hover { background: var(--background-modifier-hover); }
+.gc-head .chev { width: 14px; height: 14px; color: var(--text-faint); transition: transform .12s; margin-right: 6px; }
+.gc-section.is-collapsed .chev { transform: rotate(-90deg); }
+.gc-head .name { flex: 1; font-weight: 500; }
+.gc-head .icon-btn { width: 24px; height: 24px; }
+.gc-head .icon-btn svg { width: 15px; height: 15px; }
+.gc-body { padding: 2px 14px 12px; }
+.gc-section.is-collapsed .gc-body { display: none; }
+
+.gc-item { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; gap: 10px; }
+.gc-item.col { flex-direction: column; align-items: stretch; gap: 4px; }
+.gc-item .label { color: var(--text-normal); }
+.gc-item .val { color: var(--text-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.gc-item .row { display: flex; align-items: center; gap: 8px; }
+
+.search-input {
+  width: 100%; padding: 6px 8px 6px 28px; border-radius: 5px; border: 1px solid var(--background-modifier-border);
+  background: var(--background-primary) no-repeat 8px center; color: var(--text-normal); font-size: 13px; outline: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E");
+}
+.search-input:focus { border-color: var(--interactive-accent); }
+
+/* Obsidian 风格开关 */
+.toggle { width: 36px; height: 20px; border-radius: 10px; background: var(--toggle-off); position: relative; cursor: pointer; flex-shrink: 0; transition: background .15s; }
+.toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.2); transition: transform .15s; }
+.toggle.on { background: var(--interactive-accent); }
+.toggle.on::after { transform: translateX(16px); }
+
+/* 滑块 */
+input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 4px; border-radius: 2px; outline: none; margin: 8px 0;
+  background: linear-gradient(to right, var(--interactive-accent) var(--p, 50%), var(--background-modifier-border) var(--p, 50%)); }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #fff;
+  border: 1px solid var(--background-modifier-border); box-shadow: 0 1px 3px rgba(0,0,0,.25); cursor: grab; }
+input[type=range]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 1px solid #ccc; }
+
+.btn { padding: 6px 14px; border-radius: 5px; border: 1px solid var(--background-modifier-border); background: var(--background-primary);
+  color: var(--text-normal); cursor: pointer; font-size: 13px; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+.btn:hover { background: var(--background-modifier-hover); }
+.btn.cta { background: var(--interactive-accent); border-color: transparent; color: #fff; }
+.gc-actions { display: flex; justify-content: flex-end; padding-top: 6px; }
+
+/* 颜色组 */
+.cg-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.cg-row input[type=text] { flex: 1; min-width: 0; padding: 5px 7px; border-radius: 5px; border: 1px solid var(--background-modifier-border);
+  background: var(--background-primary); color: var(--text-normal); font-size: 12px; outline: none; }
+.cg-row input[type=color] { width: 24px; height: 24px; padding: 0; border: none; border-radius: 50%; overflow: hidden; cursor: pointer; background: none; }
+.cg-row input[type=color]::-webkit-color-swatch-wrapper { padding: 0; }
+.cg-row input[type=color]::-webkit-color-swatch { border: none; border-radius: 50%; }
+.hint { font-size: 12px; color: var(--text-faint); line-height: 1.6; }
+
+/* 笔记卡片（点击节点） */
+.note-card {
+  position: absolute; left: 12px; bottom: 12px; width: 300px; max-height: 50%; overflow-y: auto; z-index: 2;
+  background: var(--background-primary); border: 1px solid var(--background-modifier-border); border-radius: 8px;
+  box-shadow: var(--shadow); padding: 12px 14px; font-size: 13px; display: none;
+}
+.note-card.show { display: block; }
+.note-card h3 { margin: 0 0 4px; font-size: 15px; }
+.note-card .path { color: var(--text-faint); font-size: 12px; margin-bottom: 8px; word-break: break-all; }
+.note-card .tag { display: inline-block; background: var(--background-modifier-hover); color: var(--interactive-accent); border-radius: 10px; padding: 1px 8px; margin: 0 4px 4px 0; font-size: 12px; }
+.note-card h4 { margin: 10px 0 4px; font-size: 12px; color: var(--text-muted); font-weight: 500; }
+.note-card a { display: block; color: var(--text-normal); text-decoration: none; padding: 2px 4px; border-radius: 4px; cursor: pointer; }
+.note-card a:hover { background: var(--background-modifier-hover); color: var(--interactive-accent); }
+.note-card .close { position: absolute; top: 8px; right: 8px; }

@@ -1,0 +1,22 @@
+import fs from 'fs';
+const src = fs.readFileSync(new URL('../replica/sim-worker.js', import.meta.url), 'utf8');
+const libs = {};
+for (const u of src.match(/https:[^']+/g)) libs[u] = await (await fetch(u)).text();
+const out = [];
+const self = { postMessage: (m) => out.push(m) };
+globalThis.self = self; globalThis.postMessage = self.postMessage;
+globalThis.importScripts = (...us) => { for (const u of us) (0, eval)(libs[u]); };
+(0, eval)(src);
+// 两个簇 + 连线
+const nodes = {}; const links = [];
+for (let i = 0; i < 40; i++) nodes['n' + i] = [Math.random() * 2000 - 1000, Math.random() * 2000 - 1000];
+for (let i = 1; i < 20; i++) links.push(['n0', 'n' + i]);
+for (let i = 21; i < 40; i++) links.push(['n20', 'n' + i]);
+self.onmessage({ data: { forces: { centerStrength: 0.1, repelStrength: 1000, linkStrength: 1, linkDistance: 250 } } });
+self.onmessage({ data: { nodes, links, alpha: 1, run: true } });
+await new Promise(r => setTimeout(r, 3000));
+const last = out[out.length - 1];
+const f = new Float32Array(last.buffer);
+const d = (a, b) => Math.hypot(f[2*a]-f[2*b], f[2*a+1]-f[2*b+1]).toFixed(0);
+console.log('posts:', out.length, 'dist n0-n1', d(0,1), 'n0-n5', d(0,5), 'n0-n20', d(0,20), 'n0 pos', f[0].toFixed(0), f[1].toFixed(0));
+process.exit(0);

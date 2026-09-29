@@ -1,0 +1,33 @@
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #ffffff;
+  font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif; color: #222; }
+#graph { position: absolute; inset: 0; }
+
+.kg-topbar { position: fixed; top: 12px; left: 12px; z-index: 10; display: flex; gap: 8px; align-items: center;
+  background: rgba(250,250,250,.92); border: 1px solid #e5e5e5; border-radius: 10px; padding: 6px 10px;
+  box-shadow: 0 2px 10px rgba(0,0,0,.06); font-size: 13px; }
+.kg-topbar a { color: #7c3aed; text-decoration: none; }
+.kg-topbar .title { font-weight: 600; }
+.kg-topbar .tech { color: #888; }
+.kg-fps { font-variant-numeric: tabular-nums; color: #16a34a; min-width: 56px; }
+.kg-fps.low { color: #dc2626; }
+
+.kg-panel { position: fixed; top: 12px; right: 12px; z-index: 10; width: 290px; background: #f6f6f6;
+  border: 1px solid #e3e3e3; border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,.08); font-size: 14px;
+  user-select: none; }
+.kg-panel summary { cursor: pointer; padding: 12px 16px; font-weight: 500; list-style: none; border-bottom: 1px solid #e8e8e8; }
+.kg-panel summary::before { content: '›'; display: inline-block; margin-right: 8px; transition: transform .15s; color: #888; }
+.kg-panel details[open] summary::before { transform: rotate(90deg); }
+.kg-panel .body { padding: 6px 16px 14px; }
+.kg-row { margin: 10px 0 4px; }
+.kg-row .lbl { text-align: center; color: #444; margin-bottom: 6px; }
+.kg-row .ctl { display: flex; align-items: center; gap: 10px; }
+.kg-row .val { width: 44px; font-variant-numeric: tabular-nums; color: #333; }
+.kg-row input[type=range] { flex: 1; accent-color: #8b5cf6; }
+.kg-btns { display: flex; gap: 8px; margin-top: 12px; }
+.kg-btns button, .kg-panel select { flex: 1; padding: 6px 8px; border: 1px solid #ddd; border-radius: 6px;
+  background: #fff; cursor: pointer; font-size: 13px; }
+.kg-btns button:hover { border-color: #8b5cf6; color: #7c3aed; }
+.kg-note { font-size: 12px; color: #777; line-height: 1.6; }
+.kg-legend { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 12px; color: #555; }
+.kg-legend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>04 · Sigma.js + graphology</title>
+<link rel="stylesheet" href="../shared/panel.css">
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/graphology@0.26.0/dist/graphology.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sigma@3.0.3/dist/sigma.min.js"></script>
+<script src="../shared/data.js"></script>
+<script src="../shared/panel.js"></script>
+</head>
+<body>
+<div id="graph"></div>
+<script>
+const { nodes, links } = KG_clone();
+const neighbors = KG_DATA.neighbors;
+
+// ---- d3-force 先预热若干步，得到初始布局 ----
+const sim = d3.forceSimulation(nodes)
+  .velocityDecay(0.35)
+  .force('link', d3.forceLink(links).id(d => d.id))
+  .force('charge', d3.forceManyBody())
+  .force('x', d3.forceX(0)).force('y', d3.forceY(0))
+  .force('collide', d3.forceCollide(d => KG_radius(d) + 2))
+  .stop();
+
+const graph = new graphology.Graph({ type: 'undirected' });
+for (const n of nodes) {
+  graph.addNode(n.id, { label: n.label, size: KG_radius(n), color: KG_color(n), x: 0, y: 0 });
+}
+for (const l of links) graph.addEdge(l.source.id ?? l.source, l.target.id ?? l.target);
+
+function syncPositions() {
+  // d3 的 y 轴向下，sigma 的 y 轴向上，取反保持一致观感
+  for (const n of nodes) {
+    graph.mergeNodeAttributes(n.id, { x: n.x, y: -n.y });
+  }
+}
+
+let hover = null, dragging = null;
+
+const renderer = new Sigma(graph, document.getElementById('graph'), {
+  labelRenderedSizeThreshold: 6,
+  labelSize: 12,
+  labelFont: '-apple-system, "Microsoft YaHei", sans-serif',
+  defaultEdgeColor: '#e2e2e2',
+  zIndex: true,
+  nodeReducer: (id, d) => {
+    if (!hover) return d;
+    if (id === hover) return { ...d, color: '#8b5cf6', highlighted: true, zIndex: 2 };
+    if (neighbors.get(hover).has(id)) return { ...d, forceLabel: true, zIndex: 1 };
+    return { ...d, color: '#eeeeee', label: '', zIndex: 0 };
+  },
+  edgeReducer: (id, d) => {
+    if (!hover) return d;
+    const ext = graph.extremities(id);
+    return ext.includes(hover) ? { ...d, color: '#8b5cf6', size: 1.6, zIndex: 1 } : { ...d, color: '#f4f4f4' };
+  },
+});
+
+renderer.on('enterNode', ({ node }) => { if (!dragging) { hover = node; renderer.refresh({ skipIndexation: true }); } });
+renderer.on('leaveNode', () => { if (!dragging) { hover = null; renderer.refresh({ skipIndexation: true }); } });
+
+// ---- 拖拽：钉住节点 fx/fy，同时加热模拟 ----
+renderer.on('downNode', ({ node }) => {
+  dragging = nodes.find(n => n.id === node);
+  sim.alphaTarget(0.3).restart();
+});
+renderer.on('moveBody', ({ event }) => {
+  if (!dragging) return;
+  const p = renderer.viewportToGraph(event);
+  dragging.fx = p.x; dragging.fy = -p.y;
+  event.preventSigmaDefault();
+  event.original.preventDefault();
+  event.original.stopPropagation();
+});
+const release = () => {
+  if (!dragging) return;
+  dragging.fx = null; dragging.fy = null;
+  dragging = null;
+  sim.alphaTarget(0);
+};
+renderer.on('upNode', release);
+renderer.on('upStage', release);
+
+sim.on('tick', syncPositions);
+
+function lockBBox() {
+  // 关键：固定坐标系。否则 sigma 每次按节点包围盒自动归一化，布局变化时视图会“抖动”
+  const xs = nodes.map(n => n.x), ys = nodes.map(n => -n.y);
+  const pad = 200;
+  renderer.setCustomBBox({ x: [Math.min(...xs) - pad, Math.max(...xs) + pad], y: [Math.min(...ys) - pad, Math.max(...ys) + pad] });
+}
+
+function applyForces(p) {
+  const f = KG_toD3(p);
+  sim.force('x').strength(f.centerStrength);
+  sim.force('y').strength(f.centerStrength);
+  sim.force('charge').strength(f.charge);
+  sim.force('link').distance(f.linkDistance).strength(f.linkStrength);
+  sim.alpha(0.5).restart();
+}
+
+const params = KG_panel({
+  title: '04 · Sigma.js',
+  tech: 'WebGL 渲染 + graphology，物理由 d3-force 实时驱动',
+  onChange: applyForces,
+  onReheat: () => sim.alpha(0.8).restart(),
+  onFit: () => { lockBBox(); renderer.getCamera().animatedReset({ duration: 500 }); },
+  note: 'Sigma 专为大图设计（WebGL 渲染 + 标签碰撞检测），节点多时性能最好。它本身只负责渲染，这里用 d3-force 实时驱动坐标，做出 Obsidian 的弹性手感；也可以换成 graphology 的 ForceAtlas2 布局。',
+});
+applyForces(params);
+sim.stop();
+sim.tick(120);            // 先静默迭代，避免开场从一个点炸开
+syncPositions();
+lockBBox();
+sim.alpha(0.3).restart();
+</script>
+</body>
+</html>
